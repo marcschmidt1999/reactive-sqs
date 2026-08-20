@@ -5,6 +5,7 @@ dependencies {
 
     implementation(platform(libs.spring.boot3.bom))
     implementation(libs.spring.boot.autoconfigure)
+    implementation(libs.reactor.core)
     implementation(libs.jackson2.databind)
     compileOnly(libs.micrometer.core)
 

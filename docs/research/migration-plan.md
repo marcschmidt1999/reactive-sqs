@@ -4,7 +4,7 @@ This project supports two Spring Boot generations through separate starter artif
 
 | Area | Current support | Migration constraint |
 | --- | --- | --- |
-| `reactive-sqs-core` | Reactor BOM 2024.0.18 (Reactor Core 3.7.x) | It is framework-free but exposes Reactor types. |
+| `reactive-sqs-core` | Compiled against Reactor 3.7.x | It is framework-free, exposes Reactor types, and publishes no Reactor version. |
 | `reactive-sqs-spring` | Compiled against Spring Framework 6.2.19 | It is shared by both starters, publishes no Spring version, and must stay binary-compatible with the supported Spring lines. |
 | `reactive-sqs-spring-boot-3-starter` | Boot 3.5.16, Jackson 2 | Must remain on Spring Framework 6.2 and Reactor 3.7. |
 | `reactive-sqs-spring-boot-4-starter` | Boot 4.1.1, Jackson 3 | Uses Spring Framework 7 and Reactor 3.8. |
@@ -58,7 +58,7 @@ Reactor 2024.0.18 resolves Reactor Core 3.7.x. Reactor 2025.0.6 resolves Reactor
 Work required:
 
 - Do not set `reactor=2025.0.x` globally while promising Boot 3.5 support. Boot 3.5 manages the 2024.0/3.7 line, while Boot 4.1 manages Reactor Core 3.8.6. Let each starter's Boot BOM select the version that it supports.
-- If `reactive-sqs-core` is also published for non-Boot use, document the supported Reactor ranges and avoid forcing its BOM onto consumers. Test the oldest supported 3.7 line and the current 3.8 line.
+- The published core module uses a consumer-managed `compileOnly` Reactor dependency. Direct users must add a supported Reactor version; the starter tests cover the Reactor 3.7 and 3.8 runtime lines.
 - Review source and public API for `reactor.util.annotation.*`. Reactor 3.8 deprecates those annotations in favor of JSpecify; ordinary Reactor use is source-compatible, but nullness annotations need type-use migration. This project currently has no such imports. [Reactor null-safety documentation](https://projectreactor.io/docs/core/release/reference/advancedFeatures/null-safety.html)
 - Treat this as a behavioral migration: run the listener lifecycle, bounded in-flight/backpressure, cancellation, visibility extension, retry, telemetry, and batch-delete tests. The main risk is changed scheduling/backpressure behavior rather than a broad source rewrite.
 

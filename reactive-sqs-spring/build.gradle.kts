@@ -4,6 +4,8 @@ dependencies {
     api(project(":reactive-sqs-core"))
 
     compileOnly(libs.spring.context)
+    compileOnly(platform(libs.reactor.bom))
+    compileOnly(libs.reactor.core)
 
     testImplementation(platform(libs.spring.boot3.bom))
     testImplementation(libs.spring.boot.starter.test)

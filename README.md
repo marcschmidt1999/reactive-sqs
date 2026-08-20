@@ -20,6 +20,10 @@ dependencies {
 }
 ```
 
+The starter uses the Reactor and Spring versions managed by your Boot BOM. If you use
+`reactive-sqs-core` or `reactive-sqs-spring` directly, add compatible Reactor and Spring
+dependencies to your application.
+
 Create the `SqsAsyncClient` in your application. The library uses it but does not close it.
 
 ```java
