@@ -6,8 +6,8 @@ junit5 = "5.12.2"
 mockito = "5.23.0"
 reactor = "2024.0.18"
 spring-framework = "6.2.19"
-spring-boot3 = "3.5.16"
-spring-boot4 = "4.0.7"
+spring-boot3 = "4.1.0"
+spring-boot4 = "4.1.0"
 
 [libraries]
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
