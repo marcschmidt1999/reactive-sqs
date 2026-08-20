@@ -3,6 +3,7 @@ import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsExtension
 import com.github.spotbugs.snom.SpotBugsTask
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import java.math.BigDecimal
 import org.gradle.api.artifacts.ModuleDependency
 import org.gradle.api.plugins.JavaPluginExtension
@@ -21,7 +22,7 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
 plugins {
     base
     id("com.diffplug.spotless") version "8.10.0"
-    id("com.github.spotbugs") version "6.5.10" apply false
+    id("com.github.spotbugs") version "6.5.11" apply false
 }
 
 group = "io.github.marcschmidt1999"
@@ -29,6 +30,8 @@ version = "0.1.0-SNAPSHOT"
 
 val mockitoCore = libs.mockito.core
 val jacocoToolVersion = libs.versions.jacoco.get()
+val unstableVersion =
+    Regex("(?i)(?:^|[.-])(alpha|beta|rc|cr|m|milestone|preview|snapshot|ea)\\d*(?:$|[.-])")
 val publishedLibraryPaths =
     setOf(
         ":reactive-sqs-core",
@@ -36,6 +39,13 @@ val publishedLibraryPaths =
         ":reactive-sqs-spring-boot-3-starter",
         ":reactive-sqs-spring-boot-4-starter",
     )
+
+tasks.named<DependencyUpdatesTask>("dependencyUpdates") {
+    revision = "release"
+    rejectVersionIf {
+        unstableVersion.containsMatchIn(candidate.version)
+    }
+}
 
 spotless {
     format("buildFiles") {

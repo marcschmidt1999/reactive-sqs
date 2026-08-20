@@ -12,6 +12,7 @@ Commands:
   format                 Apply project formatting.
   check                  Run tests and static checks.
   build                  Build every module.
+  versions               List available dependency, plugin, and Gradle updates.
   publish-local          Publish artifacts to the local Maven repository.
   tag <version>          Create a local annotated Git tag named v<version>.
   help                   Show this help.
@@ -78,6 +79,10 @@ run() {
         build)
             require_no_arguments "$@"
             run_gradle build
+            ;;
+        versions)
+            require_no_arguments "$@"
+            run_gradle --no-parallel --no-configuration-cache --dependency-verification off dependencyUpdates
             ;;
         publish-local)
             require_no_arguments "$@"

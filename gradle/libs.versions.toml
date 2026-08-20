@@ -1,8 +1,8 @@
 [versions]
 assertj = "3.27.7"
-aws-sdk = "2.53.1"
-jacoco = "0.8.14"
-junit5 = "5.12.2"
+aws-sdk = "2.54.0"
+jacoco = "0.8.15"
+junit5 = "5.14.4"
 mockito = "5.23.0"
 reactor = "2024.0.18"
 spring-framework = "6.2.19"

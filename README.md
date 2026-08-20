@@ -157,6 +157,7 @@ Not supported yet:
 ./run.sh format
 ./run.sh check
 ./run.sh build
+./run.sh versions
 ./run.sh publish-local
 ```
 
