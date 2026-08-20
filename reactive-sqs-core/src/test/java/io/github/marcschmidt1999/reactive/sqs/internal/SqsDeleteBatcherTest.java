@@ -157,7 +157,7 @@ class SqsDeleteBatcherTest {
                                     DeleteMessageBatchResponse.builder()
                                             .successful(
                                                     DeleteMessageBatchResultEntry.builder()
-                                                            .id(batch.entries().getFirst().id())
+                                                            .id(batch.entries().get(0).id())
                                                             .build())
                                             .failed(
                                                     BatchResultErrorEntry.builder()

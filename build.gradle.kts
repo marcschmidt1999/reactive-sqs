@@ -124,14 +124,8 @@ subprojects {
 
     tasks.withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
-        options.release.set(21)
+        options.release.set(if (java17CompatibleLibrary) 17 else 21)
         options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-parameters"))
-    }
-
-    if (java17CompatibleLibrary) {
-        tasks.named<JavaCompile>("compileJava") {
-            options.release.set(17)
-        }
     }
 
     tasks.withType<Test>().configureEach {

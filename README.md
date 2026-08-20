@@ -167,6 +167,9 @@ Supported:
 - Spring Boot 4 / Jackson 3
 - Standard SQS queues
 
+Continuous integration tests the Boot 3 path on Java 17, 21, and 25. It tests the full project,
+including the Boot 4 starter and demo, on Java 21 and 25.
+
 Not supported yet:
 
 - FIFO queues

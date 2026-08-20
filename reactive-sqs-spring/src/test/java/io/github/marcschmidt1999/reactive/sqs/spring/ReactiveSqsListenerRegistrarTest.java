@@ -392,7 +392,7 @@ class ReactiveSqsListenerRegistrarTest {
         registrar.start();
 
         assertThat(handlerStarted).isCompleted();
-        assertThat(receiveRequests.getFirst().visibilityTimeout()).isEqualTo(10);
+        assertThat(receiveRequests.get(0).visibilityTimeout()).isEqualTo(10);
         scheduler.advanceTimeBy(Duration.ofMillis(4_499));
         assertThat(visibilityChanges).isEmpty();
 

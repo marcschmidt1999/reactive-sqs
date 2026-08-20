@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- JDK 21+
+- JDK 21+ for the full project build
+- JDK 17 for the Boot 3 compatibility check
 - Use the checked-in Gradle wrapper
 - Do not commit `build/` files
 
@@ -15,6 +16,12 @@ Use this loop for behavior changes:
 3. Make the smallest change that passes the test.
 4. Clean up only while tests stay green.
 5. Run `./gradlew check` before opening a pull request.
+
+The Boot 3 compatibility check is:
+
+```shell
+./gradlew :reactive-sqs-core:check :reactive-sqs-spring:check :reactive-sqs-spring-boot-3-starter:check
+```
 
 Mock only external systems such as `SqsAsyncClient`. Use Reactor virtual time for retries,
 visibility, timeouts, and shutdown. Do not use sleeps in tests.

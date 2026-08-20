@@ -12,15 +12,24 @@ permissions:
 
 jobs:
   build:
-    name: Build (Java ${{ matrix.java }})
+    name: ${{ matrix.name }} (Java ${{ matrix.java }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        java:
-          - "21"
-          - "25"
+        include:
+          - name: Boot 3 compatibility
+            java: "17"
+            gradle-tasks: >-
+              :reactive-sqs-core:check :reactive-sqs-spring:check
+              :reactive-sqs-spring-boot-3-starter:check
+          - name: Full build
+            java: "21"
+            gradle-tasks: build
+          - name: Full build
+            java: "25"
+            gradle-tasks: build
 
     steps:
       - name: Check out repository
@@ -38,7 +47,7 @@ jobs:
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
       - name: Build and verify
-        run: ./gradlew build --no-daemon
+        run: ./gradlew ${{ matrix.gradle-tasks }} --no-daemon
 
   dependency-review:
     name: Dependency review

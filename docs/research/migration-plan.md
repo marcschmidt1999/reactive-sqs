@@ -4,10 +4,10 @@ This project supports two Spring Boot generations through separate starter artif
 
 | Area | Current support | Migration constraint |
 | --- | --- | --- |
-| `reactive-sqs-core` | Compiled against Reactor 3.7.x | It is framework-free, exposes Reactor types, and publishes no Reactor version. |
-| `reactive-sqs-spring` | Compiled against Spring Framework 6.2.19 | It is shared by both starters, publishes no Spring version, and must stay binary-compatible with the supported Spring lines. |
-| `reactive-sqs-spring-boot-3-starter` | Boot 3.5.16, Jackson 2 | Must remain on Spring Framework 6.2 and Reactor 3.7. |
-| `reactive-sqs-spring-boot-4-starter` | Boot 4.1.1, Jackson 3 | Uses Spring Framework 7 and Reactor 3.8. |
+| `reactive-sqs-core` | Java 17, Reactor 3.7.x | It is framework-free, exposes Reactor types, and publishes no Reactor version. |
+| `reactive-sqs-spring` | Java 17, Spring Framework 6.2.19 | It is shared by both starters, publishes no Spring version, and must stay binary-compatible with the supported Spring lines. |
+| `reactive-sqs-spring-boot-3-starter` | Java 17, Boot 3.5.16, Jackson 2 | Must remain on Spring Framework 6.2 and Reactor 3.7. |
+| `reactive-sqs-spring-boot-4-starter` | Java 21, Boot 4.1.1, Jackson 3 | Uses Spring Framework 7 and Reactor 3.8. |
 | Demo | Boot 3.5.16 | Keep it as the Boot 3 integration test; add a separate Boot 4 demo only if a runnable example is needed. |
 
 The core and Spring modules are published libraries. Do not let either export an exact Spring or Reactor version that overrides an application's Boot BOM. The application BOM should select its matching Spring and Reactor versions.
@@ -19,7 +19,7 @@ The core and Spring modules are published libraries. Do not let either export an
 3. Upgrade Reactor for the Boot 4 path to 2025.0.x. Keep the Boot 3 path on the Reactor version managed by Boot 3.5.
 4. Upgrade the standalone test toolchain to JUnit 6 only after confirming that the Boot 3 and Boot 4 test BOMs resolve a compatible version. Spring Framework 7 itself uses JUnit 6, but this does not require Boot 3 consumers to do so.
 
-Every migration needs a full build, both starter integration test suites, dependency locking, and dependency-verification metadata refresh. The SQS demo should also be exercised against a real queue for receive, visibility renewal, failed handler redelivery, and batched deletion.
+Every migration needs a full build, both starter integration test suites, dependency locking, and dependency-verification metadata refresh. CI runs the Boot 3 path on Java 17, 21, and 25, and the full project on Java 21 and 25. The SQS demo should also be exercised against a real queue for receive, visibility renewal, failed handler redelivery, and batched deletion.
 
 ## Spring Framework 6.2 to 7.0
 

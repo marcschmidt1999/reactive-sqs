@@ -320,9 +320,10 @@ class SqsListenerEngineTelemetryTest {
         assertThat(receives)
                 .extracting(SqsListenerTelemetry.ReceiveCompleted::outcome)
                 .containsExactly(SqsListenerTelemetry.ReceiveOutcome.TERMINAL_ERROR);
-        assertThat(states.getLast().running()).isFalse();
-        assertThat(states.getLast().failed()).isTrue();
-        assertThat(states.getLast().inFlight()).isZero();
+        var finalState = states.get(states.size() - 1);
+        assertThat(finalState.running()).isFalse();
+        assertThat(finalState.failed()).isTrue();
+        assertThat(finalState.inFlight()).isZero();
     }
 
     @Test
@@ -691,7 +692,7 @@ class SqsListenerEngineTelemetryTest {
         scheduler.advanceTimeBy(SqsDeleteBatcher.MAX_BATCH_WAIT);
 
         assertThat(events).hasSize(1);
-        var event = events.getFirst();
+        var event = events.get(0);
         engine.stop().block(Duration.ofSeconds(2));
         return event;
     }
