@@ -6,6 +6,7 @@ import com.github.spotbugs.snom.SpotBugsTask
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import java.math.BigDecimal
 import org.gradle.api.artifacts.ModuleDependency
+import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -26,7 +27,7 @@ plugins {
 }
 
 group = "io.github.marcschmidt1999"
-version = "0.1.0-SNAPSHOT"
+version = providers.gradleProperty("version").orElse("0.1.0-SNAPSHOT").get()
 
 val mockitoCore = libs.mockito.core
 val jacocoToolVersion = libs.versions.jacoco.get()
@@ -231,6 +232,16 @@ subprojects {
                     }
                 }
             }
+            repositories {
+                maven {
+                    name = "GitHubPackages"
+                    url = uri("https://maven.pkg.github.com/marcschmidt1999/reactive-sqs")
+                    credentials(PasswordCredentials::class) {
+                        username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                        password = providers.environmentVariable("GITHUB_TOKEN").orNull
+                    }
+                }
+            }
         }
     }
 }
@@ -241,4 +252,14 @@ tasks.named("check") {
 
 tasks.named("assemble") {
     dependsOn(subprojects.map { "${it.path}:assemble" })
+}
+
+tasks.register("publishGithubPackages") {
+    group = "publishing"
+    description = "Publishes library artifacts to GitHub Packages."
+    dependsOn(
+        publishedLibraryPaths.map {
+            "$it:publishAllPublicationsToGitHubPackagesRepository"
+        },
+    )
 }

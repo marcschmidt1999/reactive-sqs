@@ -24,6 +24,32 @@ The starter uses the Reactor and Spring versions managed by your Boot BOM. If yo
 `reactive-sqs-core` or `reactive-sqs-spring` directly, add compatible Reactor and Spring
 dependencies to your application.
 
+## GitHub Packages
+
+Pre-release versions are available from GitHub Packages. Add the repository and a GitHub classic
+personal access token with `read:packages` to your Gradle properties:
+
+```kotlin
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/marcschmidt1999/reactive-sqs")
+        credentials {
+            username = providers.gradleProperty("gpr.user").orNull
+            password = providers.gradleProperty("gpr.key").orNull
+        }
+    }
+}
+```
+
+```text
+# ~/.gradle/gradle.properties
+gpr.user=<github-user>
+gpr.key=<github-classic-token-with-read-packages>
+```
+
+Maintainers publish a version by pushing a `v<version>` tag. The GitHub workflow builds every
+module and publishes the four library artifacts. It does not publish the demo.
+
 Create the `SqsAsyncClient` in your application. The library uses it but does not close it.
 
 ```java
