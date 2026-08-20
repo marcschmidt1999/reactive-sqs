@@ -64,14 +64,14 @@ Work required:
 
 ## JUnit 5 to 6
 
-**Scope:** test dependencies and developer tooling only; no production artifact should expose JUnit.
+**Scope:** test dependencies and developer tooling only; no production artifact should expose JUnit. The standalone core suite and Boot 4 run JUnit 6. Boot 3-related suites remain on its managed JUnit 5 line.
 
 JUnit 6 requires Java 17 and aligns Platform, Jupiter, and Vintage modules on the same version number. It removes long-deprecated APIs and modules such as `junit-platform-runner` and `junit-platform-jfr`; JFR functionality is in the launcher. [JUnit 6 release notes](https://docs.junit.org/6.0.0/release-notes.html) The project already compiles and tests on Java 21, uses Jupiter plus `junit-platform-launcher`, and has no custom JUnit extension or removed module usage.
 
 Work required:
 
-- Change the JUnit BOM version to a chosen stable 6.x release, then refresh locks and verification metadata.
-- Confirm each module's resolved test graph. Boot starter test dependencies may manage JUnit themselves, so do not force a conflicting version ahead of the Boot 3/4 compatibility checks.
+- Use JUnit 6.0.3 for the standalone core suite, then refresh locks and verification metadata. Boot 4.1.1 manages the same version.
+- Confirm each module's resolved test graph. Boot starter test dependencies manage JUnit themselves, so do not force JUnit 6 onto the Boot 3 test line.
 - Re-run all tests. Pay attention to test order: JUnit 6 makes nested-class ordering deterministic and changes default ordering behavior. CSV parameterized tests should also be reviewed if added later. [JUnit 6 release notes: breaking changes](https://docs.junit.org/6.0.0/release-notes.html#deprecations-and-breaking-changes)
 - Keep any future custom extension code free of removed/deprecated APIs and account for JSpecify nullness declarations in JUnit 6.
 

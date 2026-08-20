@@ -9,7 +9,7 @@ dependencies {
 
     implementation("org.slf4j:slf4j-api:2.0.18")
 
-    testImplementation(platform(libs.junit5.bom))
+    testImplementation(platform(libs.junit6.bom))
     testImplementation(platform(libs.reactor.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj)

@@ -2,7 +2,7 @@
 assertj = "3.27.7"
 aws-sdk = "2.54.0"
 jacoco = "0.8.15"
-junit5 = "5.14.4"
+junit6 = "6.0.3"
 mockito = "5.23.0"
 reactor = "2024.0.18"
 spring-framework = "6.2.19"
@@ -18,7 +18,7 @@ aws-ssooidc = { module = "software.amazon.awssdk:ssooidc" }
 aws-sts = { module = "software.amazon.awssdk:sts" }
 jackson2-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
 jackson3-databind = { module = "tools.jackson.core:jackson-databind" }
-junit5-bom = { module = "org.junit:junit-bom", version.ref = "junit5" }
+junit6-bom = { module = "org.junit:junit-bom", version.ref = "junit6" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 micrometer-core = { module = "io.micrometer:micrometer-core" }
