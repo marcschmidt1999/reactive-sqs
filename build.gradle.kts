@@ -3,6 +3,7 @@ import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsExtension
 import com.github.spotbugs.snom.SpotBugsTask
+import java.math.BigDecimal
 import org.gradle.api.artifacts.ModuleDependency
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
@@ -14,6 +15,7 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.tasks.Jar
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
@@ -126,8 +128,22 @@ subprojects {
         }
     }
 
+    val jacocoTestCoverageVerification =
+        tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+            dependsOn(tasks.named("test"))
+            violationRules {
+                rule {
+                    limit {
+                        counter = "LINE"
+                        value = "COVEREDRATIO"
+                        minimum = BigDecimal("0.75")
+                    }
+                }
+            }
+        }
+
     tasks.named("check") {
-        dependsOn(jacocoTestReport)
+        dependsOn(jacocoTestReport, jacocoTestCoverageVerification)
     }
 
     tasks.withType<Javadoc>().configureEach {

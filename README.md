@@ -160,6 +160,9 @@ Not supported yet:
 ./run.sh publish-local
 ```
 
+Each module must keep at least 75% line coverage. Reports are written to
+`build/reports/jacoco/test/html/index.html`.
+
 Create a local release tag with `./run.sh tag 0.1.0`. The command requires a clean Git working
 tree and does not push the tag.
 
