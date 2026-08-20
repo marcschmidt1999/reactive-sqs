@@ -21,9 +21,7 @@ jobs:
         include:
           - name: Boot 3 compatibility
             java: "17"
-            gradle-tasks: >-
-              :reactive-sqs-core:check :reactive-sqs-spring:check
-              :reactive-sqs-spring-boot-3-starter:check
+            gradle-tasks: java17CompatibilityCheck
           - name: Full build
             java: "21"
             gradle-tasks: build

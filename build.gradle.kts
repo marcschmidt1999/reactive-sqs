@@ -40,6 +40,12 @@ val publishedLibraryPaths =
         ":reactive-sqs-spring-boot-3-starter",
         ":reactive-sqs-spring-boot-4-starter",
     )
+val java17CompatibleLibraryPaths =
+    setOf(
+        ":reactive-sqs-core",
+        ":reactive-sqs-spring",
+        ":reactive-sqs-spring-boot-3-starter",
+    )
 
 tasks.named<DependencyUpdatesTask>("dependencyUpdates") {
     revision = "release"
@@ -82,13 +88,7 @@ allprojects {
 
 subprojects {
     val publishedLibrary = path in publishedLibraryPaths
-    val java17CompatibleLibrary =
-        path in
-            setOf(
-                ":reactive-sqs-core",
-                ":reactive-sqs-spring",
-                ":reactive-sqs-spring-boot-3-starter",
-            )
+    val java17CompatibleLibrary = path in java17CompatibleLibraryPaths
 
     apply(plugin = "java-library")
     apply(plugin = "jacoco")
@@ -259,6 +259,22 @@ tasks.named("check") {
 
 tasks.named("assemble") {
     dependsOn(subprojects.map { "${it.path}:assemble" })
+}
+
+tasks.register("java17CompatibilityCheck") {
+    group = "verification"
+    description = "Runs the Java 17-compatible modules without Java 21-only formatting tools."
+    dependsOn(
+        java17CompatibleLibraryPaths.flatMap { projectPath ->
+            listOf(
+                "$projectPath:test",
+                "$projectPath:jacocoTestCoverageVerification",
+                "$projectPath:spotbugsMain",
+                "$projectPath:spotbugsTest",
+            )
+        },
+    )
+    dependsOn(":reactive-sqs-spring-boot-3-starter:verifyJava17Compatibility")
 }
 
 tasks.register("publishGithubPackages") {

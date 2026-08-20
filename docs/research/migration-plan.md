@@ -19,7 +19,7 @@ The core and Spring modules are published libraries. Do not let either export an
 3. Upgrade Reactor for the Boot 4 path to 2025.0.x. Keep the Boot 3 path on the Reactor version managed by Boot 3.5.
 4. Upgrade the standalone test toolchain to JUnit 6 only after confirming that the Boot 3 and Boot 4 test BOMs resolve a compatible version. Spring Framework 7 itself uses JUnit 6, but this does not require Boot 3 consumers to do so.
 
-Every migration needs a full build, both starter integration test suites, dependency locking, and dependency-verification metadata refresh. CI runs the Boot 3 path on Java 17, 21, and 25, and the full project on Java 21 and 25. The SQS demo should also be exercised against a real queue for receive, visibility renewal, failed handler redelivery, and batched deletion.
+Every migration needs a full build, both starter integration test suites, dependency locking, and dependency-verification metadata refresh. CI runs `java17CompatibilityCheck` for the Boot 3 path on Java 17, and the full project on Java 21 and 25. The SQS demo should also be exercised against a real queue for receive, visibility renewal, failed handler redelivery, and batched deletion.
 
 ## Spring Framework 6.2 to 7.0
 

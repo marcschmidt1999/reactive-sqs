@@ -20,7 +20,7 @@ Use this loop for behavior changes:
 The Boot 3 compatibility check is:
 
 ```shell
-./gradlew :reactive-sqs-core:check :reactive-sqs-spring:check :reactive-sqs-spring-boot-3-starter:check
+./gradlew java17CompatibilityCheck
 ```
 
 Mock only external systems such as `SqsAsyncClient`. Use Reactor virtual time for retries,
