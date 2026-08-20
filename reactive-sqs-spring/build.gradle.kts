@@ -3,7 +3,7 @@ description = "Spring annotation and lifecycle integration for reactive SQS list
 dependencies {
     api(project(":reactive-sqs-core"))
 
-    api(libs.spring.context)
+    compileOnly(libs.spring.context)
 
     testImplementation(platform(libs.spring.boot3.bom))
     testImplementation(libs.spring.boot.starter.test)

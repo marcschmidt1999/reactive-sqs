@@ -5,7 +5,7 @@ This project supports two Spring Boot generations through separate starter artif
 | Area | Current support | Migration constraint |
 | --- | --- | --- |
 | `reactive-sqs-core` | Reactor BOM 2024.0.18 (Reactor Core 3.7.x) | It is framework-free but exposes Reactor types. |
-| `reactive-sqs-spring` | Spring Framework 6.2.19 | It is shared by both starters and must stay binary-compatible with the supported Spring lines. |
+| `reactive-sqs-spring` | Compiled against Spring Framework 6.2.19 | It is shared by both starters, publishes no Spring version, and must stay binary-compatible with the supported Spring lines. |
 | `reactive-sqs-spring-boot-3-starter` | Boot 3.5.16, Jackson 2 | Must remain on Spring Framework 6.2 and Reactor 3.7. |
 | `reactive-sqs-spring-boot-4-starter` | Boot 4.1.1, Jackson 3 | Uses Spring Framework 7 and Reactor 3.8. |
 | Demo | Boot 3.5.16 | Keep it as the Boot 3 integration test; add a separate Boot 4 demo only if a runnable example is needed. |
@@ -31,7 +31,7 @@ Work required:
 
 - Do not change the single `spring-framework` catalog version from 6.2 to 7.0 while Boot 3 is supported. That would make the Boot 3 starter resolve against an unsupported framework generation.
 - Compile the shared Spring module against the oldest supported Spring line (6.2) and test it through both starters, or split framework-specific code if a Spring 7-only API becomes necessary.
-- Avoid publishing Spring Framework as an exact transitive version from the shared module. Use a consumer-managed/compile-only API dependency where appropriate, while each starter uses its Boot BOM to supply the runtime version.
+- Do not publish Spring Framework as an exact transitive version from the shared module. It uses a consumer-managed `compileOnly` dependency, while each starter's Boot BOM supplies the runtime version.
 - Keep the existing two payload converters: Boot 3 accepts Jackson 2 `ObjectMapper`; Boot 4 accepts Jackson 3 `JsonMapper`. Spring Framework 7's Jackson 2 support is deprecated and planned for removal after 7.1, so the Boot 4 starter must not regress to Jackson 2. [Spring Framework 7 Jackson notes](https://github.com/spring-projects/spring-framework/wiki/Spring-Framework-7.0-Release-Notes#jackson-3x-support)
 - Add a compatibility matrix in CI: Boot 3 starter tests on Spring 6.2/Jackson 2 and Boot 4 starter tests on Spring 7/Jackson 3. Do not put both starters on one application classpath: both export auto-configuration for the same feature but deliberately use different JSON mapper types.
 
