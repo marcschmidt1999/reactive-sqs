@@ -5,7 +5,7 @@ jacoco = "0.8.14"
 junit5 = "5.12.2"
 mockito = "5.23.0"
 reactor = "2024.0.18"
-spring-framework = "6.2.19"
+spring-framework = "7.0.8"
 spring-boot3 = "3.5.16"
 spring-boot4 = "4.0.7"
 
