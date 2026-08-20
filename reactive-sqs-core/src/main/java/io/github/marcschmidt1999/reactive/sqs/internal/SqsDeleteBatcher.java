@@ -115,7 +115,7 @@ final class SqsDeleteBatcher {
             scheduledFlush.dispose();
             scheduledFlush = Disposables.disposed();
             while (!pendingDeletes.isEmpty() && batch.size() < MAX_BATCH_SIZE) {
-                var pendingDelete = pendingDeletes.removeFirst();
+                var pendingDelete = pendingDeletes.remove(0);
                 if (pendingDelete.state.compareAndSet(PendingState.PENDING, PendingState.SENT)) {
                     batch.add(pendingDelete);
                 }

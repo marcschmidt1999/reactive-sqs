@@ -6,6 +6,7 @@ This project will use Semantic Versioning after its first public release.
 
 ### Added
 
+- Java 17 runtime support for the Spring Boot 3 starter, Spring adapter, and core engine.
 - Java 21 Gradle build with four modules.
 - Spring Boot 3 / Jackson 2 and Spring Boot 4 / Jackson 3 starters.
 - `@ReactiveSqsListener` with typed payloads and `SqsMessage<T>`.

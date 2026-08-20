@@ -2,7 +2,7 @@
 
 Reactive SQS is a Spring library for consuming standard Amazon SQS queues with Reactor.
 
-It supports Java 21, Spring Boot 3, Spring Boot 4, typed JSON payloads, visibility renewal,
+It supports Java 17 with Spring Boot 3 and Java 21 with Spring Boot 4, typed JSON payloads, visibility renewal,
 bounded concurrency, batched deletes, and Micrometer metrics.
 
 Status: `0.1.0-SNAPSHOT`. It is not released for production use yet.
@@ -160,7 +160,8 @@ payloads, queue URLs, account IDs, or exception text.
 
 Supported:
 
-- Java 21
+- Java 17 with the Spring Boot 3 starter
+- Java 21 with the Spring Boot 4 starter
 - AWS SDK for Java 2.x
 - Spring Boot 3.5 / Jackson 2
 - Spring Boot 4 / Jackson 3

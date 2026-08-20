@@ -82,6 +82,13 @@ allprojects {
 
 subprojects {
     val publishedLibrary = path in publishedLibraryPaths
+    val java17CompatibleLibrary =
+        path in
+            setOf(
+                ":reactive-sqs-core",
+                ":reactive-sqs-spring",
+                ":reactive-sqs-spring-boot-3-starter",
+            )
 
     apply(plugin = "java-library")
     apply(plugin = "jacoco")
@@ -119,6 +126,12 @@ subprojects {
         options.encoding = "UTF-8"
         options.release.set(21)
         options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-parameters"))
+    }
+
+    if (java17CompatibleLibrary) {
+        tasks.named<JavaCompile>("compileJava") {
+            options.release.set(17)
+        }
     }
 
     tasks.withType<Test>().configureEach {
