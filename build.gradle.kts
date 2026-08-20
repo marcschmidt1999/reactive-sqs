@@ -18,7 +18,7 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     base
-    id("com.diffplug.spotless") version "8.9.0"
+    id("com.diffplug.spotless") version "8.10.0"
     id("com.github.spotbugs") version "6.5.10" apply false
 }
 
@@ -149,7 +149,7 @@ subprojects {
 
     extensions.configure<SpotlessExtension> {
         java {
-            googleJavaFormat("1.28.0").aosp()
+            googleJavaFormat("1.30.0").aosp()
             formatAnnotations()
             removeUnusedImports()
             trimTrailingWhitespace()

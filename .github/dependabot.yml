@@ -9,6 +9,17 @@ updates:
       time: "05:00"
       timezone: Europe/Berlin
     open-pull-requests-limit: 10
+    groups:
+      routine-gradle-updates:
+        patterns:
+          - "*"
+        update-types:
+          - patch
+          - minor
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
@@ -18,3 +29,14 @@ updates:
       time: "05:30"
       timezone: Europe/Berlin
     open-pull-requests-limit: 10
+    groups:
+      routine-github-actions-updates:
+        patterns:
+          - "*"
+        update-types:
+          - patch
+          - minor
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
