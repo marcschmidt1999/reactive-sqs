@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: reactive-sqs-demo
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    distribution:
+      percentiles:
+        "reactive.sqs.processing": 0.5,0.95,0.99
+        "reactive.sqs.delete": 0.5,0.95,0.99
+        "reactive.sqs.receive": 0.5,0.95,0.99
+      percentiles-histogram:
+        "reactive.sqs.processing": true
+        "reactive.sqs.delete": true
+        "reactive.sqs.receive": true

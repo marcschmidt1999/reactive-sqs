@@ -1,0 +1,16 @@
+{
+  "properties": [
+    {
+      "name": "reactive-sqs.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Whether annotated reactive SQS listeners are registered and started."
+    },
+    {
+      "name": "reactive-sqs.metrics.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "Whether reactive SQS Micrometer meters are registered when a MeterRegistry is available."
+    }
+  ]
+}

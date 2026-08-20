@@ -1,0 +1,3 @@
+logging:
+  level:
+    io.github.marcschmidt1999.reactive.sqs.demo.DemoMessageListener: WARN

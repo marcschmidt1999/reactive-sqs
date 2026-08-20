@@ -1,0 +1,18 @@
+.gradle/
+**/build/
+
+# Local IDE files
+.idea/
+.vscode/
+.fleet/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.factorypath
+.settings/
+.DS_Store
+
+# Local benchmark output
+/i.json
