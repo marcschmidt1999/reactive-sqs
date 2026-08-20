@@ -7,14 +7,14 @@ This project supports two Spring Boot generations through separate starter artif
 | `reactive-sqs-core` | Reactor BOM 2024.0.18 (Reactor Core 3.7.x) | It is framework-free but exposes Reactor types. |
 | `reactive-sqs-spring` | Spring Framework 6.2.19 | It is shared by both starters and must stay binary-compatible with the supported Spring lines. |
 | `reactive-sqs-spring-boot-3-starter` | Boot 3.5.16, Jackson 2 | Must remain on Spring Framework 6.2 and Reactor 3.7. |
-| `reactive-sqs-spring-boot-4-starter` | Boot 4.0.7, Jackson 3 | Must move with Boot to Spring Framework 7 and Reactor 3.8. |
+| `reactive-sqs-spring-boot-4-starter` | Boot 4.1.1, Jackson 3 | Uses Spring Framework 7 and Reactor 3.8. |
 | Demo | Boot 3.5.16 | Keep it as the Boot 3 integration test; add a separate Boot 4 demo only if a runnable example is needed. |
 
 The core and Spring modules are published libraries. Do not let either export an exact Spring or Reactor version that overrides an application's Boot BOM. The application BOM should select its matching Spring and Reactor versions.
 
 ## Recommended order
 
-1. Upgrade the Boot 4 starter from Boot 4.0.x to 4.1.x, and test it independently.
+1. Keep the Boot 4 starter on the current 4.1.x maintenance release, and test it independently.
 2. Make the shared Spring integration explicitly compatible with both Spring Framework 6.2 and 7.0, with one test path for each starter.
 3. Upgrade Reactor for the Boot 4 path to 2025.0.x. Keep the Boot 3 path on the Reactor version managed by Boot 3.5.
 4. Upgrade the standalone test toolchain to JUnit 6 only after confirming that the Boot 3 and Boot 4 test BOMs resolve a compatible version. Spring Framework 7 itself uses JUnit 6, but this does not require Boot 3 consumers to do so.
@@ -37,13 +37,13 @@ Work required:
 
 ## Spring Boot 3.5 to 4.1, while retaining Boot 3 support
 
-**Scope:** update only `reactive-sqs-spring-boot-4-starter` from Boot 4.0.x to Boot 4.1.x. Boot 3 remains a separately released supported artifact.
+**Scope:** `reactive-sqs-spring-boot-4-starter` runs Boot 4.1.1. Boot 3 remains a separately released supported artifact.
 
 Boot 4.1 requires Java 17, Spring Framework 7.0.8 or later, and Gradle 8.14+ or 9.x; the project already uses Java 21 and Gradle 9.7.1. [Boot 4.1 system requirements](https://docs.spring.io/spring-boot/system-requirements.html) Boot 4 is based on Jakarta EE 11, removes Boot 3 deprecations, and has a more modular dependency layout. [Boot 4 migration guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide)
 
 Work required:
 
-- Change only `spring-boot4` to the desired 4.1.x maintenance release. Keep `spring-boot3` at the maintained 3.5.x release.
+- Update only `spring-boot4` for Boot 4 maintenance releases. Keep `spring-boot3` at the maintained 3.5.x release.
 - Compare Boot 4.0 and 4.1 managed dependencies before removing any explicit dependency. In particular, the Boot 4.1 BOM manages Reactor Core 3.8.6. [Boot 4.1 managed coordinates](https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html)
 - Run the Boot 4 starter's auto-configuration and Micrometer tests after the upgrade. The configuration imports file format remains the current `AutoConfiguration.imports` mechanism, so no discovery migration is expected.
 - Check the demo's `application.yml` with Boot's properties migrator during a temporary test run if it is moved to Boot 4. Remove the migrator afterward; it is a migration aid, not a runtime dependency. [Boot migration guide: properties migrator](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#configuration-properties-migration)
