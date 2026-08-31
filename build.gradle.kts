@@ -22,7 +22,7 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     base
-    id("com.diffplug.spotless") version "8.10.0"
+    id("com.diffplug.spotless") version "8.10.1"
     id("com.github.spotbugs") version "6.5.11" apply false
 }
 
