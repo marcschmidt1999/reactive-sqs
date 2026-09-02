@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: reactive-sqs-soak
+  main:
+    web-application-type: none
+    keep-alive: true
+  jmx:
+    enabled: false
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+logging:
+  level:
+    root: INFO
+    io.github.marcschmidt1999.reactive.sqs.soak: INFO

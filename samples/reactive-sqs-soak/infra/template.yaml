@@ -1,0 +1,501 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Long-running reactive-sqs loss-detection soak test infrastructure
+
+Parameters:
+  RunId:
+    Type: String
+    Description: Stable identifier shared by the producer, consumers, and ledger rows.
+    AllowedPattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC containing the public subnet used for the soak-test instance.
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet with an Internet-gateway route. deploy.sh selects a default subnet.
+  ArtifactBucket:
+    Type: String
+    Description: Private S3 bucket containing the installDist archive.
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+  ArtifactKey:
+    Type: String
+    Description: Key of the reactive-sqs-soak.tar.gz installDist archive.
+    AllowedPattern: "^[A-Za-z0-9][A-Za-z0-9._/+=,@-]{0,1023}$"
+  ArtifactSha256:
+    Type: String
+    Description: Lowercase SHA-256 digest checked before the archive is extracted.
+    AllowedPattern: "^[a-f0-9]{64}$"
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+    Description: Amazon Linux 2023 ARM64 AMI resolved from the public SSM parameter.
+  VisibilityTimeoutSeconds:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 43200
+  MaxReceiveCount:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 1000
+  LedgerTtlDays:
+    Type: Number
+    Default: 30
+    MinValue: 3
+    MaxValue: 365
+    Description: Evidence retention used by the local producer for the expiresAt TTL attribute.
+  ChaosMinimumSeconds:
+    Type: Number
+    Default: 300
+    MinValue: 60
+    MaxValue: 86400
+    Description: Minimum interval between randomized consumer restarts.
+  ChaosJitterSeconds:
+    Type: Number
+    Default: 900
+    MinValue: 0
+    MaxValue: 86400
+    Description: Additional random delay added to each restart interval.
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365]
+
+Resources:
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 20
+      SqsManagedSseEnabled: true
+      Tags:
+        - Key: Purpose
+          Value: reactive-sqs-soak
+        - Key: RunId
+          Value: !Ref RunId
+
+  SourceQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 20
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: !Ref VisibilityTimeoutSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: !Ref MaxReceiveCount
+      Tags:
+        - Key: Purpose
+          Value: reactive-sqs-soak
+        - Key: RunId
+          Value: !Ref RunId
+
+  LedgerTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: runId
+          AttributeType: S
+        - AttributeName: eventId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: runId
+          KeyType: HASH
+        - AttributeName: eventId
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Purpose
+          Value: reactive-sqs-soak
+        - Key: RunId
+          Value: !Ref RunId
+
+  SoakLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - Key: Purpose
+          Value: reactive-sqs-soak
+        - Key: RunId
+          Value: !Ref RunId
+
+  ConsumerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: No-ingress security group for the reactive-sqs soak consumer
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - Description: HTTPS to AWS public service endpoints
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Purpose
+          Value: reactive-sqs-soak
+        - Key: RunId
+          Value: !Ref RunId
+
+  ConsumerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: SoakConsumerDataPlane
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ConsumeSourceAndDlq
+                Effect: Allow
+                Action:
+                  - sqs:ChangeMessageVisibility
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ReceiveMessage
+                Resource:
+                  - !GetAtt SourceQueue.Arn
+                  - !GetAtt DeadLetterQueue.Arn
+              - Sid: UpdateExistingRunLedgerRows
+                Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt LedgerTable.Arn
+              - Sid: FetchPinnedArtifact
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:${AWS::Partition}:s3:::${ArtifactBucket}/${ArtifactKey}
+              - Sid: PublishApplicationLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${SoakLogGroup}:*
+
+  ConsumerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ConsumerRole
+
+  ConsumerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 8
+              VolumeType: gp3
+        IamInstanceProfile:
+          Arn: !GetAtt ConsumerInstanceProfile.Arn
+        ImageId: !Ref AmiId
+        InstanceType: t4g.micro
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpPutResponseHopLimit: 1
+          HttpTokens: required
+          InstanceMetadataTags: disabled
+        Monitoring:
+          Enabled: false
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeleteOnTermination: true
+            DeviceIndex: 0
+            Groups:
+              - !Ref ConsumerSecurityGroup
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${AWS::StackName}-consumer
+              - Key: Purpose
+                Value: reactive-sqs-soak
+              - Key: RunId
+                Value: !Ref RunId
+          - ResourceType: volume
+            Tags:
+              - Key: Purpose
+                Value: reactive-sqs-soak
+              - Key: RunId
+                Value: !Ref RunId
+        UserData:
+          Fn::Base64:
+            Fn::Sub:
+              - |
+                #!/bin/bash
+                set -Eeuo pipefail
+                umask 027
+
+                signal_bootstrap() {
+                  exit_code=$?
+                  trap - EXIT
+                  if [[ -x /opt/aws/bin/cfn-signal ]]; then
+                    /opt/aws/bin/cfn-signal -e "$exit_code" \
+                      --stack '${StackName}' \
+                      --resource ConsumerAutoScalingGroup \
+                      --region '${Region}' || true
+                  fi
+                  exit "$exit_code"
+                }
+                trap signal_bootstrap EXIT
+
+                install -d -m 0750 /var/log/reactive-sqs-soak
+                touch /var/log/reactive-sqs-soak/bootstrap.log
+                exec > >(tee -a /var/log/reactive-sqs-soak/bootstrap.log) 2>&1
+
+                dnf install -y amazon-cloudwatch-agent aws-cfn-bootstrap java-21-amazon-corretto-headless
+                command -v aws >/dev/null
+
+                aws --region '${Region}' sqs get-queue-attributes \
+                  --queue-url '${SourceQueueUrl}' --attribute-names QueueArn >/dev/null
+                aws --region '${Region}' sqs get-queue-attributes \
+                  --queue-url '${DeadLetterQueueUrl}' --attribute-names QueueArn >/dev/null
+                readiness_error=/var/tmp/reactive-sqs-soak.dynamo-readiness-error
+                if aws --region '${Region}' dynamodb update-item \
+                  --table-name '${LedgerTableName}' \
+                  --key '{"runId":{"S":"${RunIdValue}"},"eventId":{"S":"!bootstrap-readiness"}}' \
+                  --update-expression 'SET readinessAt = :value' \
+                  --condition-expression 'attribute_exists(eventId)' \
+                  --expression-attribute-values '{":value":{"N":"0"}}' \
+                  2>"$readiness_error"; then
+                  echo 'DynamoDB readiness probe unexpectedly created an item' >&2
+                  exit 1
+                fi
+                grep -Fq ConditionalCheckFailedException "$readiness_error"
+                rm -f "$readiness_error"
+
+                id reactive-sqs-soak >/dev/null 2>&1 || useradd \
+                  --system --home-dir /opt/reactive-sqs-soak --shell /sbin/nologin reactive-sqs-soak
+                install -d -m 0750 -o reactive-sqs-soak -g reactive-sqs-soak \
+                  /opt/reactive-sqs-soak /var/log/reactive-sqs-soak
+
+                artifact=/var/tmp/reactive-sqs-soak.tar.gz
+                aws --region '${Region}' s3 cp \
+                  's3://${ArtifactBucketValue}/${ArtifactKeyValue}' "$artifact" --only-show-errors
+                printf '%s  %s\n' '${ArtifactSha256Value}' "$artifact" | sha256sum --check --strict -
+                tar -tzf "$artifact" > /var/tmp/reactive-sqs-soak.contents
+                if grep -Eq '(^/|(^|/)\.\.(/|$))' /var/tmp/reactive-sqs-soak.contents; then
+                  echo 'Refusing to extract an archive containing an unsafe path' >&2
+                  exit 1
+                fi
+                tar -xzf "$artifact" --strip-components=1 -C /opt/reactive-sqs-soak
+                test -x /opt/reactive-sqs-soak/bin/reactive-sqs-soak
+                chown -R reactive-sqs-soak:reactive-sqs-soak /opt/reactive-sqs-soak
+                rm -f "$artifact" /var/tmp/reactive-sqs-soak.contents
+
+                cat > /etc/reactive-sqs-soak.env <<'ENVIRONMENT'
+                SOAK_REGION=${Region}
+                SOAK_SOURCE_QUEUE_URL=${SourceQueueUrl}
+                SOAK_DLQ_QUEUE_URL=${DeadLetterQueueUrl}
+                SOAK_TABLE_NAME=${LedgerTableName}
+                SOAK_RUN_ID=${RunIdValue}
+                ENVIRONMENT
+                chmod 0600 /etc/reactive-sqs-soak.env
+
+                cat > /etc/systemd/system/reactive-sqs-soak.service <<'UNIT'
+                [Unit]
+                Description=Reactive SQS loss-detection soak consumer
+                Wants=network-online.target
+                After=network-online.target
+
+                [Service]
+                Type=simple
+                User=reactive-sqs-soak
+                Group=reactive-sqs-soak
+                WorkingDirectory=/opt/reactive-sqs-soak
+                EnvironmentFile=/etc/reactive-sqs-soak.env
+                ExecStart=/opt/reactive-sqs-soak/bin/reactive-sqs-soak
+                Restart=always
+                RestartSec=5s
+                TimeoutStopSec=120s
+                KillSignal=SIGTERM
+                SuccessExitStatus=143
+                NoNewPrivileges=true
+                PrivateTmp=true
+                ProtectHome=true
+                ProtectSystem=strict
+                ProtectKernelModules=true
+                ProtectKernelTunables=true
+                ProtectControlGroups=true
+                RestrictSUIDSGID=true
+                LockPersonality=true
+                MemoryDenyWriteExecute=false
+                UMask=0077
+                StandardOutput=append:/var/log/reactive-sqs-soak/application.log
+                StandardError=append:/var/log/reactive-sqs-soak/application.log
+
+                [Install]
+                WantedBy=multi-user.target
+                UNIT
+
+                cat > /etc/systemd/system/reactive-sqs-soak-chaos.service <<'UNIT'
+                [Unit]
+                Description=Restart the reactive SQS soak consumer
+
+                [Service]
+                Type=oneshot
+                ExecStart=/usr/bin/systemctl try-restart reactive-sqs-soak.service
+                UNIT
+
+                cat > /etc/systemd/system/reactive-sqs-soak-chaos.timer <<'UNIT'
+                [Unit]
+                Description=Randomized restart timer for the reactive SQS soak consumer
+
+                [Timer]
+                OnBootSec=${ChaosMinimumSecondsValue}s
+                OnUnitActiveSec=${ChaosMinimumSecondsValue}s
+                RandomizedDelaySec=${ChaosJitterSecondsValue}s
+                AccuracySec=1s
+                Persistent=true
+                Unit=reactive-sqs-soak-chaos.service
+
+                [Install]
+                WantedBy=timers.target
+                UNIT
+
+                cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'AGENT'
+                {
+                  "agent": {
+                    "region": "${Region}"
+                  },
+                  "logs": {
+                    "logs_collected": {
+                      "files": {
+                        "collect_list": [
+                          {
+                            "file_path": "/var/log/reactive-sqs-soak/application.log",
+                            "log_group_name": "${LogGroupName}",
+                            "log_stream_name": "{instance_id}/application",
+                            "timezone": "UTC"
+                          },
+                          {
+                            "file_path": "/var/log/reactive-sqs-soak/bootstrap.log",
+                            "log_group_name": "${LogGroupName}",
+                            "log_stream_name": "{instance_id}/bootstrap",
+                            "timezone": "UTC"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                AGENT
+
+                touch /var/log/reactive-sqs-soak/application.log
+                chown reactive-sqs-soak:reactive-sqs-soak /var/log/reactive-sqs-soak/application.log
+                systemctl daemon-reload
+                /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+                  -a fetch-config -m ec2 -s \
+                  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+                systemctl enable amazon-cloudwatch-agent
+                systemctl enable --now reactive-sqs-soak.service
+                systemctl enable --now reactive-sqs-soak-chaos.timer
+                app_ready=false
+                for _ in $(seq 1 60); do
+                  systemctl is-active --quiet reactive-sqs-soak.service
+                  if grep -Fq 'Started SoakApplication' \
+                    /var/log/reactive-sqs-soak/application.log; then
+                    app_ready=true
+                    break
+                  fi
+                  sleep 2
+                done
+                test "$app_ready" = true
+                sleep 5
+                systemctl is-active --quiet amazon-cloudwatch-agent
+                systemctl is-active --quiet reactive-sqs-soak.service
+                systemctl is-active --quiet reactive-sqs-soak-chaos.timer
+                test "$(systemctl show reactive-sqs-soak.service --property=NRestarts --value)" = 0
+              - Region: !Ref AWS::Region
+                StackName: !Ref AWS::StackName
+                ArtifactBucketValue: !Ref ArtifactBucket
+                ArtifactKeyValue: !Ref ArtifactKey
+                ArtifactSha256Value: !Ref ArtifactSha256
+                SourceQueueUrl: !Ref SourceQueue
+                DeadLetterQueueUrl: !Ref DeadLetterQueue
+                LedgerTableName: !Ref LedgerTable
+                RunIdValue: !Ref RunId
+                ChaosMinimumSecondsValue: !Ref ChaosMinimumSeconds
+                ChaosJitterSecondsValue: !Ref ChaosJitterSeconds
+                LogGroupName: !Ref SoakLogGroup
+
+  ConsumerAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    CreationPolicy:
+      AutoScalingCreationPolicy:
+        MinSuccessfulInstancesPercent: 100
+      ResourceSignal:
+        Count: 1
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 0
+        MinSuccessfulInstancesPercent: 100
+        PauseTime: PT15M
+        WaitOnResourceSignals: true
+    Properties:
+      DesiredCapacity: "1"
+      HealthCheckGracePeriod: 300
+      HealthCheckType: EC2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ConsumerLaunchTemplate
+        Version: !GetAtt ConsumerLaunchTemplate.LatestVersionNumber
+      MaxSize: "1"
+      MinSize: "1"
+      VPCZoneIdentifier:
+        - !Ref SubnetId
+      Tags:
+        - Key: Purpose
+          Value: reactive-sqs-soak
+          PropagateAtLaunch: true
+        - Key: RunId
+          Value: !Ref RunId
+          PropagateAtLaunch: true
+
+Outputs:
+  RunId:
+    Value: !Ref RunId
+  SourceQueueUrl:
+    Value: !Ref SourceQueue
+  SourceQueueArn:
+    Value: !GetAtt SourceQueue.Arn
+  DlqQueueUrl:
+    Value: !Ref DeadLetterQueue
+  DlqQueueArn:
+    Value: !GetAtt DeadLetterQueue.Arn
+  LedgerTableName:
+    Value: !Ref LedgerTable
+    Description: Retained on stack deletion unless stop.sh --purge-evidence is used.
+  LedgerTtlDays:
+    Value: !Ref LedgerTtlDays
+    Description: Evidence retention selected at deployment; used by the local producer.
+  AutoScalingGroupName:
+    Value: !Ref ConsumerAutoScalingGroup
+  LogGroupName:
+    Value: !Ref SoakLogGroup
+    Description: Retained on stack deletion unless stop.sh --purge-evidence is used.
+  ArtifactS3Uri:
+    Value: !Sub s3://${ArtifactBucket}/${ArtifactKey}

@@ -10,6 +10,8 @@ include(
     "reactive-sqs-spring-boot-3-starter",
     "reactive-sqs-spring-boot-4-starter",
     "reactive-sqs-demo",
+    "reactive-sqs-soak",
 )
 
 project(":reactive-sqs-demo").projectDir = file("samples/reactive-sqs-demo")
+project(":reactive-sqs-soak").projectDir = file("samples/reactive-sqs-soak")

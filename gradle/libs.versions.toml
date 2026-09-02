@@ -12,6 +12,7 @@ spring-boot4 = "4.1.1"
 [libraries]
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 aws-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-sdk" }
+aws-dynamodb = { module = "software.amazon.awssdk:dynamodb" }
 aws-sqs = { module = "software.amazon.awssdk:sqs" }
 aws-sso = { module = "software.amazon.awssdk:sso" }
 aws-ssooidc = { module = "software.amazon.awssdk:ssooidc" }
