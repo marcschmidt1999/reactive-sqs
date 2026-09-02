@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
@@ -18,6 +20,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 final class SoakProducer {
 
     private static final int MAX_BATCH_SIZE = 10;
+    private static final String MISSING_SQS_MESSAGE_ID = "!missing-sqs-message-id";
     private static final Duration INITIAL_RETRY_DELAY = Duration.ofMillis(100);
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(5);
 
@@ -70,9 +73,11 @@ final class SoakProducer {
         if (messages.isEmpty() || messages.size() > MAX_BATCH_SIZE) {
             throw new IllegalArgumentException("messages must contain between 1 and 10 entries");
         }
-        for (var message : messages) {
-            auditStore.prepare(message, preparedAt, expiresAt).join();
-        }
+        var prepareWrites =
+                messages.stream()
+                        .map(message -> auditStore.prepare(message, preparedAt, expiresAt))
+                        .toArray(CompletableFuture[]::new);
+        CompletableFuture.allOf(prepareWrites).join();
         sendPrepared(messages);
     }
 
@@ -98,14 +103,35 @@ final class SoakProducer {
                 delay = increased(delay);
                 continue;
             }
+            var accepted = new LinkedHashMap<String, AcceptedMessage>();
+            IllegalStateException invalidSuccess = null;
             for (var success : response.successful()) {
                 var message = attempted.get(success.id());
                 if (message == null) {
-                    throw new IllegalStateException(
-                            "SQS returned an unknown successful batch id: " + success.id());
+                    if (invalidSuccess == null) {
+                        invalidSuccess =
+                                new IllegalStateException(
+                                        "SQS returned an unknown successful batch id: "
+                                                + success.id());
+                    }
+                    continue;
                 }
-                markAcceptedUntilRecorded(message, success.messageId());
-                pending.remove(success.id());
+                var sqsMessageId = success.messageId();
+                if (sqsMessageId == null || sqsMessageId.isBlank()) {
+                    if (invalidSuccess == null) {
+                        invalidSuccess =
+                                new IllegalStateException(
+                                        "SQS returned a blank message id for successful batch id: "
+                                                + success.id());
+                    }
+                    sqsMessageId = MISSING_SQS_MESSAGE_ID;
+                }
+                accepted.put(success.id(), new AcceptedMessage(message, sqsMessageId));
+            }
+            markAcceptedUntilRecorded(accepted.values());
+            accepted.keySet().forEach(pending::remove);
+            if (invalidSuccess != null) {
+                throw invalidSuccess;
             }
             for (var failure : response.failed()) {
                 if (!attempted.containsKey(failure.id())) {
@@ -125,15 +151,41 @@ final class SoakProducer {
         }
     }
 
-    private void markAcceptedUntilRecorded(SoakMessage message, String sqsMessageId) {
+    private void markAcceptedUntilRecorded(java.util.Collection<AcceptedMessage> acceptedMessages) {
+        var pending = new LinkedHashMap<String, AcceptedMessage>();
+        acceptedMessages.forEach(accepted -> pending.put(accepted.message().eventId(), accepted));
         var delay = INITIAL_RETRY_DELAY;
-        while (true) {
-            try {
-                auditStore.markAccepted(message, sqsMessageId, clock.instant()).join();
-                return;
-            } catch (CompletionException exception) {
-                // SQS definitely accepted this physical message. Retry only its ledger write;
-                // resending here could let a duplicate mask loss of the confirmed copy.
+        while (!pending.isEmpty()) {
+            var failed = ConcurrentHashMap.<String>newKeySet();
+            var writes =
+                    pending.entrySet().stream()
+                            .map(
+                                    entry -> {
+                                        var accepted = entry.getValue();
+                                        try {
+                                            return auditStore
+                                                    .markAccepted(
+                                                            accepted.message(),
+                                                            accepted.sqsMessageId(),
+                                                            clock.instant())
+                                                    .handle(
+                                                            (ignored, exception) -> {
+                                                                if (exception != null) {
+                                                                    failed.add(entry.getKey());
+                                                                }
+                                                                return null;
+                                                            });
+                                        } catch (RuntimeException exception) {
+                                            failed.add(entry.getKey());
+                                            return CompletableFuture.completedFuture(null);
+                                        }
+                                    })
+                            .toArray(CompletableFuture[]::new);
+            CompletableFuture.allOf(writes).join();
+            pending.keySet().retainAll(failed);
+            if (!pending.isEmpty()) {
+                // SQS definitely accepted these physical messages. Retry only their ledger
+                // writes; resending here could let a duplicate mask loss of a confirmed copy.
                 retryDelay.pause(delay);
                 delay = increased(delay);
             }
@@ -173,4 +225,6 @@ final class SoakProducer {
         }
         return value;
     }
+
+    private record AcceptedMessage(SoakMessage message, String sqsMessageId) {}
 }
