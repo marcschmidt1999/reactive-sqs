@@ -15,6 +15,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.AfterEach;
@@ -132,6 +133,29 @@ class SqsListenerEngineAcknowledgementSafetyTest {
     }
 
     @Test
+    void handlerSuccessBeforeForcedShutdownDeletesBeforeStopCompletes() {
+        var handlerCompletion = new CompletableFuture<Void>();
+        var events = new CopyOnWriteArrayList<String>();
+        var harness =
+                new SafetyHarness(
+                        List.of(message(42)),
+                        ignored ->
+                                Mono.fromFuture(handlerCompletion)
+                                        .doOnSuccess(ignoredResult -> events.add("success")),
+                        ignored -> events.add("delete"));
+        engine = harness.engine(1, 1, 100);
+        engine.start(harness.handler());
+        var stopped = engine.stop().doOnSuccess(ignored -> events.add("stop")).toFuture();
+
+        handlerCompletion.complete(null);
+        scheduler.advanceTimeBy(SqsDeleteBatcher.MAX_BATCH_WAIT);
+
+        assertThat(stopped).isCompleted();
+        assertThat(events).containsExactly("success", "delete", "stop");
+        assertThat(harness.deletedReceiptHandles()).containsExactly("receipt-42");
+    }
+
+    @Test
     void synchronousHandlerFailureCannotDeleteMessage() {
         var harness =
                 new SafetyHarness(
@@ -243,6 +267,13 @@ class SqsListenerEngineAcknowledgementSafetyTest {
         private final List<DeleteMessageBatchRequest> deleteRequests = new CopyOnWriteArrayList<>();
 
         private SafetyHarness(List<Message> messages, Function<Message, Mono<Void>> delegate) {
+            this(messages, delegate, ignored -> {});
+        }
+
+        private SafetyHarness(
+                List<Message> messages,
+                Function<Message, Mono<Void>> delegate,
+                Consumer<DeleteMessageBatchRequest> deleteObserver) {
             this.delegate = delegate;
             var receiveCalls = new AtomicInteger();
             when(client.receiveMessage(any(ReceiveMessageRequest.class)))
@@ -264,6 +295,7 @@ class SqsListenerEngineAcknowledgementSafetyTest {
                                         .map(entry -> entry.receiptHandle())
                                         .filter(receipt -> !successfulHandlers.contains(receipt))
                                         .forEach(unsafeDeletes::add);
+                                deleteObserver.accept(request);
                                 return CompletableFuture.completedFuture(
                                         successfulDeleteResponse(request));
                             });
