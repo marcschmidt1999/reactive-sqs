@@ -22,8 +22,8 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     base
-    id("com.diffplug.spotless") version "8.10.0"
-    id("com.github.spotbugs") version "6.5.11" apply false
+    id("com.diffplug.spotless") version "8.10.3"
+    id("com.github.spotbugs") version "6.5.12" apply false
 }
 
 group = "io.github.marcschmidt1999"

@@ -7,7 +7,7 @@ dependencies {
     api(platform(libs.aws.bom))
     api(libs.aws.sqs)
 
-    implementation("org.slf4j:slf4j-api:2.0.18")
+    implementation("org.slf4j:slf4j-api:2.0.20")
 
     testImplementation(platform(libs.junit6.bom))
     testImplementation(platform(libs.reactor.bom))
